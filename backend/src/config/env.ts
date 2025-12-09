@@ -12,8 +12,7 @@ const envSchema = z.object({
     .transform((val) => parseInt(val, 10))
     .default(5000),
   FRONTEND_URL: z.url().default("http://localhost:3000"),
-  //   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  //   AUTH_SECRET: z.string().min(1, "AUTH_SECRET is required"),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
