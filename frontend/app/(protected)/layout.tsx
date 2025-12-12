@@ -23,7 +23,7 @@ const ProtectedLayout = async ({ children }: ProtectedLayoutProps) => {
       <div className="flex flex-col w-full h-full overflow-hidden">
         <ProtectedNavbar user={session.user} />
         <div className="w-full h-full overflow-hidden p-2 pt-0 lg:pl-0">
-          <div className="rounded bg-muted/40 w-full h-full overflow-hidden border">
+          <div className="rounded bg-muted/20 w-full h-full overflow-hidden border">
             {children}
           </div>
         </div>

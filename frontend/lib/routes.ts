@@ -7,7 +7,7 @@ export const ROUTES = {
     RESET_PASSWORD: "/reset-password",
   },
   DASHBOARD: {
-    HOME: "/dashboard",
+    HOME: "/dashboard/seo",
     SETTINGS: "/dashboard/settings",
   },
 } as const;

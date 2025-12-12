@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { AppError } from "@/utils/AppError";
 import { logger } from "@/utils/logger";
+import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 
 // 1. Extend Express Request to allow req.user
@@ -8,7 +9,6 @@ declare global {
     interface Request {
       user?: {
         id: string;
-        email: string;
       };
     }
   }
@@ -20,47 +20,67 @@ export const requireAuth = async (
   next: NextFunction
 ) => {
   try {
-    // 2. Get Token from Header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       logger.warn("🛑 Blocked unauthorized request (No Token)");
-      res.status(401).json({ error: "Unauthorized: Missing session token" });
-      return;
+      // Throw standardized error
+      return next(
+        new AppError("Unauthorized: Missing token", 401, "UNAUTHORIZED")
+      );
     }
 
-    // Extract the token string (remove "Bearer ")
-    const sessionToken = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
+    const [userId, expiryStr, providedSignature] = token.split(":");
 
-    // 3. Check Database
-    const session = await prisma.session.findUnique({
-      where: { sessionToken },
-      include: { user: true }, // Join with User table
-    });
-
-    // 4. Validate Session
-    if (!session) {
-      logger.warn(`🚫 Invalid token attempt: ${sessionToken.slice(0, 10)}...`);
-      res.status(401).json({ error: "Unauthorized: Invalid session" });
-      return;
+    if (!userId || !expiryStr || !providedSignature) {
+      logger.warn("🚫 Invalid token format received");
+      return next(
+        new AppError("Unauthorized: Invalid token format", 401, "INVALID_TOKEN")
+      );
     }
 
-    if (session.expires < new Date()) {
-      logger.warn(`⏳ Expired session for user: ${session.user.email}`);
-      res.status(401).json({ error: "Unauthorized: Session expired" });
-      return;
+    const now = Date.now();
+    if (parseInt(expiryStr) < now) {
+      logger.warn(`⏳ Expired token attempt for User ${userId}`);
+      return next(
+        new AppError("Unauthorized: Token expired", 401, "TOKEN_EXPIRED")
+      );
     }
 
-    // 5. Success! Attach user to request
-    req.user = {
-      id: session.user.id,
-      email: session.user.email,
-    };
+    const secret = process.env.AUTH_SECRET_KEY;
+    if (!secret) {
+      logger.error("SERVER ERROR: AUTH_SECRET_KEY missing");
+      return next(
+        new AppError("Internal Server Configuration Error", 500, "CONFIG_ERROR")
+      );
+    }
 
-    logger.info(`👤 User Authenticated: ${session.user.email}`);
-    next(); // Pass control to the route
+    const dataToSign = `${userId}:${expiryStr}`;
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(dataToSign)
+      .digest("hex");
+
+    const sourceBuffer = Buffer.from(providedSignature, "utf-8");
+    const targetBuffer = Buffer.from(expectedSignature, "utf-8");
+
+    const isMatch =
+      sourceBuffer.length === targetBuffer.length &&
+      crypto.timingSafeEqual(sourceBuffer, targetBuffer);
+
+    if (!isMatch) {
+      logger.error(`🚨 Security Alert: Signature mismatch for User ${userId}`);
+      return next(
+        new AppError("Forbidden: Invalid signature", 403, "INVALID_SIGNATURE")
+      );
+    }
+
+    req.user = { id: userId };
+    logger.info(`✅ User Authenticated via HMAC: ${userId}`);
+    next();
   } catch (error) {
     logger.error("Auth Middleware System Error", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };

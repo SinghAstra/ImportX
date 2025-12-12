@@ -15,8 +15,8 @@ interface SidebarNavItem {
 
 const sidebarNav: SidebarNavItem[] = [
   {
-    url: "/dashboard",
-    title: "Dashboard",
+    url: "/dashboard/seo",
+    title: "SEO",
     icon: Home,
   },
 ];
