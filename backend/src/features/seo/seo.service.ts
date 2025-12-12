@@ -14,6 +14,16 @@ export class SeoService {
     // 1. Use the global singleton
     this.redis = redis;
 
+    console.log("🔍 DEBUG: DataForSEO Credentials Check");
+    console.log("Login:", env.DATAFORSEO_LOGIN);
+    // Show first 3 chars of password only to check if it's loaded
+    console.log(
+      "Password:",
+      env.DATAFORSEO_PASSWORD
+        ? env.DATAFORSEO_PASSWORD.substring(0, 3) + "..."
+        : "UNDEFINED"
+    );
+
     // 2. Initialize DataForSEO Client
     // We use the 'google_ads' endpoint
     this.client = axios.create({
