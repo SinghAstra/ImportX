@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "glob": "^13.0.6",
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "^25.8.0"
+  }
+}
