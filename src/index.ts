@@ -8,6 +8,7 @@ const REPO_URL = "https://github.com/SinghAstra/Sample-FeatureX";
 const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
 const dependencyGraph: Record<string, string[]> = {};
+const circularCycles: string[][] = [];
 
 function ensureWorkspace() {
   if (fs.existsSync(WORKSPACE_DIR)) {
@@ -118,24 +119,52 @@ function calculateAndPrintGravity() {
   });
 }
 
-function traverseDepthFirst(
+function findCircularDependencies(
   currentFile: string,
   visited: Set<string> = new Set(),
-  depth: number = 0
+  currentPath: string[] = []
 ) {
-  const indent = "  ".repeat(depth);
+  const pathIndex = currentPath.indexOf(currentFile);
 
-  if (visited.has(currentFile)) {
-    console.log(`${indent}🛑 Cycle/Repeated Node Avoided: ${currentFile}`);
+  if (pathIndex !== -1) {
+    const cyclePattern = [...currentPath.slice(pathIndex), currentFile];
+    const cycleKey = cyclePattern.join(" -> ");
+
+    const isDuplicate = circularCycles.some((c) => c.join(" -> ") === cycleKey);
+    if (!isDuplicate) {
+      circularCycles.push(cyclePattern);
+    }
     return;
   }
 
-  console.log(`${indent}└── ${currentFile}`);
+  if (visited.has(currentFile)) return;
+
   visited.add(currentFile);
+  currentPath.push(currentFile);
 
   const children = dependencyGraph[currentFile] || [];
   children.forEach((child) => {
-    traverseDepthFirst(child, visited, depth + 1);
+    findCircularDependencies(child, visited, currentPath);
+  });
+
+  currentPath.pop();
+}
+
+function printWallOfShame() {
+  console.log("\n🚨 Wall of Shame: Circular Dependency Report:");
+  console.log("==============================================");
+
+  if (circularCycles.length === 0) {
+    console.log(
+      "✅ Clear Skies! Zero circular dependencies found in this project."
+    );
+    return;
+  }
+
+  console.log(`❌ Found ${circularCycles.length} structural violations:\n`);
+  circularCycles.forEach((cycle, index) => {
+    const visualChain = cycle.join(" ──> ");
+    console.log(`  [Violation ${index + 1}]: ${visualChain}`);
   });
 }
 
@@ -146,10 +175,12 @@ async function main() {
   printDependencyTree();
   calculateAndPrintGravity();
 
-  console.log("\n🚶 Deep Graph Traversal (DFS from Entry Point):");
-  console.log("==============================================");
-  const entryPoint = "app/dashboard/page.tsx";
-  traverseDepthFirst(entryPoint);
+  const globalVisited = new Set<string>();
+  Object.keys(dependencyGraph).forEach((file) => {
+    findCircularDependencies(file, globalVisited, []);
+  });
+
+  printWallOfShame();
 }
 
 main();
