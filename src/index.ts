@@ -17,9 +17,9 @@ const dependencyCommunities: Record<string, string[]> = {};
 const semanticFeatureLabels: Record<string, { name: string; summary: string }> =
   {};
 const sharedInfrastructure: string[] = [];
-
-// Step 18 Core Registry: Holds the finalized, ordered feature onboarding track sequence
 const featureOnboardingSequence: string[] = [];
+
+const featureDependencies: Record<string, string[]> = {};
 
 const CONFIG_NOISE_BLACKLIST = [
   "next.config.ts",
@@ -423,12 +423,8 @@ Record<string, { name: string; summary: string }>`;
   }
 }
 
-/**
- * Step 18 Functional Core: Feature-Aware Onboarding Orders
- * Calculates inter-dependencies across discovered features and sequences them into milestones.
- */
 function generateFeatureOnboardingSequence() {
-  console.log("\n🗺️  Analyzing High-Level Feature Inter-Dependencies...");
+  console.log("\n🗺  Analyzing High-Level Feature Inter-Dependencies...");
   console.log("=========================================================");
 
   const fileToFeatureMap: Record<string, string> = {};
@@ -442,13 +438,12 @@ function generateFeatureOnboardingSequence() {
     });
   }
 
-  // Build the adjacency mapping matrix for features
-  const featureDependencies: Record<string, Set<string>> = {};
   Object.keys(dependencyCommunities).forEach((id) => {
-    featureDependencies[id] = new Set<string>();
+    featureDependencies[id] = [];
   });
 
   for (const [communityId, files] of Object.entries(dependencyCommunities)) {
+    const dependenciesSet = new Set<string>();
     files.forEach((file) => {
       const fileImports = dependencyGraph[file] || [];
       fileImports.forEach((importedFile) => {
@@ -458,17 +453,17 @@ function generateFeatureOnboardingSequence() {
           targetFeature !== communityId &&
           targetFeature !== "Shared Infrastructure"
         ) {
-          featureDependencies[communityId]?.add(targetFeature);
+          dependenciesSet.add(targetFeature);
         }
       });
     });
+    featureDependencies[communityId] = Array.from(dependenciesSet);
   }
 
-  // Display found dependency links
   for (const [communityId, targets] of Object.entries(featureDependencies)) {
     const currentName = semanticFeatureLabels[communityId]?.name || communityId;
-    if (targets.size > 0) {
-      const targetsList = Array.from(targets)
+    if (targets.length > 0) {
+      const targetsList = targets
         .map((t) => semanticFeatureLabels[t]?.name || t)
         .join(", ");
       console.log(
@@ -481,7 +476,6 @@ function generateFeatureOnboardingSequence() {
     }
   }
 
-  // Perform feature-level topological sequencing pass
   const visitedFeatures = new Set<string>();
   const temporaryStack = new Set<string>();
 
@@ -495,7 +489,7 @@ function generateFeatureOnboardingSequence() {
     }
 
     temporaryStack.add(id);
-    const dependencies = featureDependencies[id] || new Set();
+    const dependencies = featureDependencies[id] || [];
     dependencies.forEach((depId) => visitFeature(depId));
 
     temporaryStack.delete(id);
@@ -511,6 +505,63 @@ function generateFeatureOnboardingSequence() {
   Object.keys(dependencyCommunities).forEach((id) => visitFeature(id));
   console.log("=========================================================");
   console.log("🏁 Feature-Aware Onboarding Order Compilation Complete.\n");
+}
+
+function writeCurriculumJson() {
+  console.log(
+    "💾 Compiling and Exporting structured data payload matrix to local disk..."
+  );
+  console.log("=========================================================");
+
+  const jsonExportContract: Record<string, any> = {
+    features: {
+      "Shared Infrastructure": {
+        order: 1,
+        summary:
+          "Core system configurations, global database setups, utility abstractions, and cross-cutting libraries.",
+        dependsOn: [],
+        files: sharedInfrastructure,
+      },
+    },
+  };
+
+  featureOnboardingSequence.forEach((communityId, index) => {
+    const label = semanticFeatureLabels[communityId] || {
+      name: communityId,
+      summary: "No summary details compiled.",
+    };
+
+    // Resolve dynamic requirements names out of the cluster keys
+    const technicalDeps = featureDependencies[communityId] || [];
+    const namedDependencies = technicalDeps.map(
+      (depId) => semanticFeatureLabels[depId]?.name || depId
+    );
+
+    // Every application module relies inherently on base system capabilities
+    if (namedDependencies.length === 0) {
+      namedDependencies.push("Shared Infrastructure");
+    }
+
+    jsonExportContract.features[label.name] = {
+      order: index + 2,
+      summary: label.summary,
+      dependsOn: namedDependencies,
+      files: dependencyCommunities[communityId] || [],
+    };
+  });
+
+  const targetOutputPath = path.join(process.cwd(), "curriculum.json");
+  fs.writeFileSync(
+    targetOutputPath,
+    JSON.stringify(jsonExportContract, null, 2),
+    "utf8"
+  );
+
+  console.log(
+    `💾 [SUCCESS] Structured curriculum contract compiled perfectly.`
+  );
+  console.log(`📁 Artifact Target Destination Location: ${targetOutputPath}`);
+  console.log("=========================================================");
 }
 
 function printDependencyTree() {
@@ -580,30 +631,6 @@ function printGraphCommunities() {
       console.log(`      └── 📄 ${file}`);
     });
   }
-}
-
-function printFeatureOnboardingSequence() {
-  console.log("\n🎓 Ordered Feature Curriculum Roadmap Timeline:");
-  console.log("==================================================");
-  console.log(
-    "Follow this sequential milestone order to onboard onto high-level functional areas:\n"
-  );
-
-  console.log(`🏁 Milestone 01: [Shared Foundational Infrastructure]`);
-  console.log(
-    `   └── 📝 Core system configurations, utilities, and common tools.`
-  );
-
-  featureOnboardingSequence.forEach((communityId, index) => {
-    const milestoneNum = String(index + 2).padStart(2, "0");
-    const label = semanticFeatureLabels[communityId] || {
-      name: communityId,
-      summary: "No summary details compiled.",
-    };
-    console.log(`🏁 Milestone ${milestoneNum}: [${label.name}]`);
-    console.log(`   └── 📝 ${label.summary}`);
-  });
-  console.log("==================================================");
 }
 
 function compileCurriculumAndDetectCycles(
@@ -698,13 +725,14 @@ async function main() {
   clusterFilesByGraphDensity(featureFiles);
 
   await runAISemanticLabeling();
-
   generateFeatureOnboardingSequence();
+
+  writeCurriculumJson();
 
   printDependencyTree();
   calculateAndPrintGravity();
   printGraphCommunities();
-  printFeatureOnboardingSequence();
+
   Object.keys(dependencyGraph).forEach((file) => {
     compileCurriculumAndDetectCycles(file, []);
   });
