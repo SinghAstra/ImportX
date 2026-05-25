@@ -14,9 +14,11 @@ const learningCurriculum: string[] = [];
 
 const fileExportMaps: Record<string, Record<string, string>> = {};
 const dependencyCommunities: Record<string, string[]> = {};
-
 const semanticFeatureLabels: Record<string, { name: string; summary: string }> =
   {};
+
+// Step 17 Core Registry: Holds isolated shared infrastructure files
+const sharedInfrastructure: string[] = [];
 
 const CONFIG_NOISE_BLACKLIST = [
   "next.config.ts",
@@ -197,6 +199,47 @@ function parseRepositoryFiles(codeFiles: string[], project: Project) {
   });
 }
 
+function extractSharedInfrastructure(codeFiles: string[]): string[] {
+  console.log("\n🪐 Running Deterministic Shared Infrastructure Extraction...");
+  console.log("=========================================================");
+
+  const gravityScores: Record<string, number> = {};
+  codeFiles.forEach((file) => {
+    gravityScores[normalizePath(file)] = 0;
+  });
+
+  Object.values(dependencyGraph).forEach((dependencies) => {
+    dependencies.forEach((child) => {
+      if (gravityScores[child] !== undefined) {
+        gravityScores[child]++;
+      }
+    });
+  });
+
+  // Threshold: If a file is consumed by 3 or more modules, it's classified as infrastructure
+  const INFRASTRUCTURE_THRESHOLD = 3;
+
+  const featureFiles = codeFiles.filter((file) => {
+    const normalized = normalizePath(file);
+    const score = gravityScores[normalized] || 0;
+
+    if (score >= INFRASTRUCTURE_THRESHOLD) {
+      sharedInfrastructure.push(normalized);
+      console.log(
+        `🛡️  Isolated Infrastructure Base: ${normalized} (Gravity Score: ${score}) -> Removed from features`
+      );
+      return false;
+    }
+    return true;
+  });
+
+  console.log(
+    `✅ Isolation Pass Complete. Separated ${sharedInfrastructure.length} utility modules from ${featureFiles.length} core feature modules.`
+  );
+  console.log("=========================================================");
+  return featureFiles;
+}
+
 function clusterFilesByGraphDensity(codeFiles: string[]) {
   console.log("\n🧪 Starting Graph-First Community Clustering Execution...");
   console.log("=========================================================");
@@ -321,12 +364,6 @@ async function runAISemanticLabeling() {
   }
 
   console.log("📡 Dispatching structural summary context to Gemini Engine...");
-  console.log(
-    "📤 [INPUT PAYLOAD] Sending the following compiled cluster metadata payload mapping properties:"
-  );
-  console.log(JSON.stringify(clusterSummaries, null, 2));
-  console.log("=========================================================");
-
   try {
     const promptSystem = `You are a Principal Software Architect. You are given a JSON object containing code clusters found via graph density analytics.
 Your job is to look at the file paths, their exported codes, and their short import names to infer what high-level feature or business capability each cluster represents.
@@ -366,14 +403,7 @@ Record<string, { name: string; summary: string }>`;
     const data = await response.json();
     const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    console.log("=========================================================");
     if (resultText) {
-      console.log(
-        "📥 [OUTPUT RESPONSE] Received raw structured JSON block from Gemini:"
-      );
-      console.log(resultText);
-      console.log("=========================================================");
-
       const parsed = JSON.parse(resultText);
       Object.assign(semanticFeatureLabels, parsed);
       console.log(
@@ -435,8 +465,19 @@ function calculateAndPrintGravity() {
 }
 
 function printGraphCommunities() {
-  console.log("\n🕸️ Discovered Dependency Communities:");
+  console.log("\n🕸️  Discovered Dependency Communities:");
   console.log("=============================================");
+
+  if (sharedInfrastructure.length > 0) {
+    console.log(`⚙️  Global Pool: [Shared Foundational Infrastructure]`);
+    console.log(
+      `   📝 Description: Core foundational building blocks consumed globally across multiple application domains.`
+    );
+    sharedInfrastructure.forEach((file) => {
+      console.log(`      └── 🛡️  ${file}`);
+    });
+    console.log("---------------------------------------------");
+  }
 
   for (const [community, files] of Object.entries(dependencyCommunities)) {
     const aiLabel = semanticFeatureLabels[community] || {
@@ -539,7 +580,9 @@ async function main() {
   buildGlobalExportMaps(codeFiles, project);
   parseRepositoryFiles(codeFiles, project);
 
-  clusterFilesByGraphDensity(codeFiles);
+  const featureFiles = extractSharedInfrastructure(codeFiles);
+
+  clusterFilesByGraphDensity(featureFiles);
 
   await runAISemanticLabeling();
 
