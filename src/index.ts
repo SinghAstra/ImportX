@@ -4,8 +4,7 @@ import { glob } from "glob";
 import path from "path";
 import { Project, SourceFile } from "ts-morph";
 
-const REPO_URL =
-  "[https://github.com/SinghAstra/Sample-FeatureX](https://github.com/SinghAstra/Sample-FeatureX)";
+const REPO_URL = "https://github.com/SinghAstra/Sample-FeatureX";
 const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
 const dependencyGraph: Record<string, string[]> = {};
@@ -13,9 +12,8 @@ const circularCycles: string[][] = [];
 const fullyProcessed = new Set<string>();
 const learningCurriculum: string[] = [];
 
-// Upfront Symbol Ledger: Maps file paths to their available export symbols and original locations
-// Structure: fileExportMaps["directory/index.ts"]["Button"] = "directory/button.tsx"
 const fileExportMaps: Record<string, Record<string, string>> = {};
+const dependencyCommunities: Record<string, string[]> = {};
 
 const CONFIG_NOISE_BLACKLIST = [
   "next.config.ts",
@@ -73,12 +71,7 @@ async function validateRepository(): Promise<string[]> {
   return codeFiles;
 }
 
-/**
- * Architectural Layer: Upfront Export Map Builder
- * Syntactically indexes every exported token across the codebase.
- */
 function buildGlobalExportMaps(codeFiles: string[], project: Project) {
-  // --- PASS 1: Initialize Maps & Index Local Declarations + Explicit Re-exports ---
   codeFiles.forEach((file) => {
     const absolutePath = path.join(WORKSPACE_DIR, file);
     const normalizedFile = normalizePath(file);
@@ -87,12 +80,9 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
     if (!fs.existsSync(absolutePath)) return;
 
     const sourceFile = project.addSourceFileAtPath(absolutePath);
-
-    // Extract local reference to silence strict index layout warnings
     const currentMap = fileExportMaps[normalizedFile];
     if (!currentMap) return;
 
-    // 1. Index local classes
     sourceFile.getClasses().forEach((c) => {
       if (c.isExported()) {
         const name = c.getName();
@@ -100,7 +90,6 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
       }
     });
 
-    // 2. Index local functions
     sourceFile.getFunctions().forEach((f) => {
       if (f.isExported()) {
         const name = f.getName();
@@ -108,14 +97,12 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
       }
     });
 
-    // 3. Index local variables / constants
     sourceFile.getVariableDeclarations().forEach((v) => {
       if (v.getVariableStatement()?.isExported()) {
         currentMap[v.getName()] = normalizedFile;
       }
     });
 
-    // 4. Index explicit named re-exports (e.g., export { Button } from "./button")
     sourceFile.getExportDeclarations().forEach((ed) => {
       const specifierSource = ed.getModuleSpecifierSourceFile();
       if (specifierSource) {
@@ -129,7 +116,6 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
     });
   });
 
-  // --- PASS 2: Trace and Flatten Wildcard Re-exports (e.g., export * from "./button") ---
   const visitedWildcards = new Set<string>();
 
   function resolveWildcards(normalizedFile: string) {
@@ -144,7 +130,6 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
     if (!currentMap) return;
 
     sourceFile.getExportDeclarations().forEach((ed) => {
-      // Check if it is a wildcard export line (has no explicit named brackets)
       if (!ed.hasNamedExports() && !ed.isTypeOnly()) {
         const specifierSource = ed.getModuleSpecifierSourceFile();
         if (specifierSource) {
@@ -152,10 +137,8 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
             path.relative(WORKSPACE_DIR, specifierSource.getFilePath())
           );
 
-          // Recursively ensure the target's wildcards are resolved first
           resolveWildcards(targetRelative);
 
-          // Deep copy symbols from the target file's registry straight into this proxy barrel map
           const targetSymbols = fileExportMaps[targetRelative] || {};
           for (const [symbol, originFile] of Object.entries(targetSymbols)) {
             currentMap[symbol] = originFile;
@@ -168,10 +151,6 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
   codeFiles.forEach((file) => resolveWildcards(normalizePath(file)));
 }
 
-/**
- * Architectural Layer: Symbol-Aware Import Parser
- * Resolves standard imports by matching names directly against the pre-compiled routing tables.
- */
 function parseRepositoryFiles(codeFiles: string[], project: Project) {
   codeFiles.forEach((file) => {
     const absolutePath = path.join(WORKSPACE_DIR, file);
@@ -193,7 +172,6 @@ function parseRepositoryFiles(codeFiles: string[], project: Project) {
       const namedImports = declaration.getNamedImports();
 
       if (namedImports.length > 0) {
-        // Trace token strings straight through the pre-compiled symbol router
         namedImports.forEach((namedImport) => {
           const symbolName = namedImport.getName();
           const targetMap = fileExportMaps[targetRelative];
@@ -204,18 +182,100 @@ function parseRepositoryFiles(codeFiles: string[], project: Project) {
           if (directOriginFile) {
             uniqueDependencies.add(directOriginFile);
           } else {
-            // Fallback to direct file binding if symbol tracking is missing
             uniqueDependencies.add(targetRelative);
           }
         });
       } else {
-        // Default or Namespace imports naturally pull the direct target module layout
         uniqueDependencies.add(targetRelative);
       }
     });
 
     dependencyGraph[normalizedParent] = Array.from(uniqueDependencies);
   });
+}
+
+function clusterFilesByGraphDensity(codeFiles: string[]) {
+  console.log("\n🧪 Starting Graph-First Community Clustering Execution...");
+  console.log("=========================================================");
+
+  const fileList = codeFiles.map((f) => normalizePath(f));
+  const assignedCommunity: Record<string, string> = {};
+  let communityCounter = 0;
+
+  function calculateCouplingScore(fileA: string, fileB: string): number {
+    let score = 0;
+    const depsA = dependencyGraph[fileA] || [];
+    const depsB = dependencyGraph[fileB] || [];
+
+    if (depsA.includes(fileB) || depsB.includes(fileA)) {
+      score += 3.0;
+    }
+
+    const sharedDeps = depsA.filter((d) => depsB.includes(d));
+    score += sharedDeps.length * 1.5;
+
+    if (path.dirname(fileA) === path.dirname(fileB)) {
+      score += 0.5;
+    }
+
+    return score;
+  }
+
+  for (let i = 0; i < fileList.length; i++) {
+    const fileA = fileList[i];
+    if (!fileA) continue;
+
+    if (!assignedCommunity[fileA]) {
+      communityCounter++;
+      const communityID = `provisional_community_${String(
+        communityCounter
+      ).padStart(2, "0")}`;
+      assignedCommunity[fileA] = communityID;
+      dependencyCommunities[communityID] = [fileA];
+      console.log(
+        `🌱 Created new base anchor [${communityID}] initialized with: ${fileA}`
+      );
+    }
+
+    const currentCommunity = assignedCommunity[fileA];
+    if (!currentCommunity) continue;
+
+    for (let j = i + 1; j < fileList.length; j++) {
+      const fileB = fileList[j];
+      if (!fileB) continue;
+
+      const couplingAffinity = calculateCouplingScore(fileA, fileB);
+
+      if (couplingAffinity >= 2.0) {
+        const existingCommunity = assignedCommunity[fileB];
+
+        if (!existingCommunity) {
+          assignedCommunity[fileB] = currentCommunity;
+          dependencyCommunities[currentCommunity]?.push(fileB);
+          console.log(
+            `   ➕ Link found: Added ${fileB} to [${currentCommunity}] (Affinity Score: ${couplingAffinity})`
+          );
+        } else if (existingCommunity !== currentCommunity) {
+          console.log(
+            `   💥 Collision Detected! Strong affinity (${couplingAffinity}) between ${fileA} and ${fileB}`
+          );
+          console.log(
+            `      Merging entire community [${existingCommunity}] into [${currentCommunity}]`
+          );
+
+          const filesToMerge = dependencyCommunities[existingCommunity] || [];
+          filesToMerge.forEach((f) => {
+            assignedCommunity[f] = currentCommunity;
+            dependencyCommunities[currentCommunity]?.push(f);
+            console.log(`         -> Relocated: ${f}`);
+          });
+          delete dependencyCommunities[existingCommunity];
+        }
+      }
+    }
+  }
+  console.log("=========================================================");
+  console.log("🏁 Graph Density Clustering Computation Complete.\n");
 }
 
 function printDependencyTree() {
@@ -257,6 +317,18 @@ function calculateAndPrintGravity() {
   sortedGravity.forEach(([file, score]) => {
     console.log(`🏆 ${file} ──> Score: ${score}`);
   });
+}
+
+function printGraphCommunities() {
+  console.log("\n🕸️ Discovered Dependency Communities:");
+  console.log("=============================================");
+
+  for (const [community, files] of Object.entries(dependencyCommunities)) {
+    console.log(`🔮 ${community} (Graph Local Density Cluster)`);
+    files.forEach((file) => {
+      console.log(`   └── 📄 ${file}`);
+    });
+  }
 }
 
 function compileCurriculumAndDetectCycles(
@@ -304,7 +376,7 @@ function printWallOfShame() {
   console.log(`❌ Found ${circularCycles.length} structural violations:\n`);
   circularCycles.forEach((cycle, index) => {
     const visualChain = cycle.join(" ──> ");
-    console.log(`  [Violation ${index + 1}]: ${visualChain}`);
+    console.log(`   [Violation ${index + 1}]: ${visualChain}`);
   });
 }
 
@@ -330,7 +402,7 @@ function printLearningCurriculum() {
         ? "🟢 Foundation Module (Zero dependencies ── Read standalone!)"
         : `🟡 Composite Module (Consumes ${childrenCount} underlying dependencies)`;
 
-    console.log(`  [Step ${stepNum}]: ${file}`);
+    console.log(`   [Step ${stepNum}]: ${file}`);
     console.log(`            └── ${description}`);
   });
 }
@@ -347,8 +419,11 @@ async function main() {
   buildGlobalExportMaps(codeFiles, project);
   parseRepositoryFiles(codeFiles, project);
 
+  clusterFilesByGraphDensity(codeFiles);
+
   printDependencyTree();
   calculateAndPrintGravity();
+  printGraphCommunities();
 
   Object.keys(dependencyGraph).forEach((file) => {
     compileCurriculumAndDetectCycles(file, []);
