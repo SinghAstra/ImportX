@@ -7,6 +7,10 @@ import { Project } from "ts-morph";
 const REPO_URL = "https://github.com/SinghAstra/Sample-FeatureX";
 const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
+const dependencyGraph: Record<string, string[]> = {};
+
+// check if the repo is downloaded or not
+// if not then download it
 function ensureWorkspace() {
   if (fs.existsSync(WORKSPACE_DIR)) {
     console.log("✅ Cache found: Using existing tmp-workspace.");
@@ -18,6 +22,7 @@ function ensureWorkspace() {
   }
 }
 
+// Check if majority of files are of Javascript / Typescript
 async function validateRepository() {
   const allFiles = await glob("**/*", {
     cwd: WORKSPACE_DIR,
@@ -57,29 +62,29 @@ function parseTargetFile() {
   const sourceFile = project.addSourceFileAtPath(targetPath);
   const importDeclarations = sourceFile.getImportDeclarations();
 
-  console.log(`🔍 Resolving Import Paths:`);
-  console.log("--------------------------------------");
+  const targetRelativePath = "app/dashboard/page.tsx";
+  const dependencies: string[] = [];
 
   importDeclarations.forEach((declaration) => {
-    const moduleSpecifier = declaration.getModuleSpecifierValue();
     const resolvedFile = declaration.getModuleSpecifierSourceFile();
 
     if (resolvedFile) {
       const absolutePath = resolvedFile.getFilePath();
       const relativeToWorkspace = path.relative(WORKSPACE_DIR, absolutePath);
-      console.log(`   - "${moduleSpecifier}" ──> ${relativeToWorkspace}`);
-    } else {
-      console.log(
-        `   - "${moduleSpecifier}" ──> ⚠️ Unresolved (External/Broken)`
-      );
+      dependencies.push(relativeToWorkspace);
     }
   });
+
+  dependencyGraph[targetRelativePath] = dependencies;
 }
 
 async function main() {
   ensureWorkspace();
   await validateRepository();
   parseTargetFile();
+
+  console.log("\n🕸️ Generated Dependency Graph:");
+  console.log(JSON.stringify(dependencyGraph, null, 2));
 }
 
 main();
