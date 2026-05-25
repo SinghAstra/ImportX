@@ -9,8 +9,6 @@ const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
 const dependencyGraph: Record<string, string[]> = {};
 
-// check if the repo is downloaded or not
-// if not then download it
 function ensureWorkspace() {
   if (fs.existsSync(WORKSPACE_DIR)) {
     console.log("✅ Cache found: Using existing tmp-workspace.");
@@ -22,8 +20,7 @@ function ensureWorkspace() {
   }
 }
 
-// Check if majority of files are of Javascript / Typescript
-async function validateRepository() {
+async function validateRepository(): Promise<string[]> {
   const allFiles = await glob("**/*", {
     cwd: WORKSPACE_DIR,
     nodir: true,
@@ -44,38 +41,38 @@ async function validateRepository() {
     console.error("❌ Validation Failed: Repo is not primarily TS/JS.");
     process.exit(1);
   }
+  return codeFiles;
 }
 
-function parseTargetFile() {
+function parseRepositoryFiles(codeFiles: string[]) {
   const project = new Project({
     tsConfigFilePath: path.join(WORKSPACE_DIR, "tsconfig.json"),
   });
 
-  const targetPath = path.join(WORKSPACE_DIR, "app/dashboard/page.tsx");
+  codeFiles.forEach((file) => {
+    const absolutePath = path.join(WORKSPACE_DIR, file);
+    const normalizedParent = file.replace(/\\/g, "/");
 
-  if (!fs.existsSync(targetPath)) {
-    console.error(`❌ Target file not found at: ${targetPath}`);
-    return;
-  }
+    if (!fs.existsSync(absolutePath)) return;
 
-  console.log(`\n🌳 Loading AST Tree for: app/dashboard/page.tsx`);
-  const sourceFile = project.addSourceFileAtPath(targetPath);
-  const importDeclarations = sourceFile.getImportDeclarations();
+    const sourceFile = project.addSourceFileAtPath(absolutePath);
+    const importDeclarations = sourceFile.getImportDeclarations();
+    const dependencies: string[] = [];
 
-  const targetRelativePath = "app/dashboard/page.tsx";
-  const dependencies: string[] = [];
+    importDeclarations.forEach((declaration) => {
+      const resolvedFile = declaration.getModuleSpecifierSourceFile();
 
-  importDeclarations.forEach((declaration) => {
-    const resolvedFile = declaration.getModuleSpecifierSourceFile();
+      if (resolvedFile) {
+        const resolvedAbsolutePath = resolvedFile.getFilePath();
+        const relativeToWorkspace = path
+          .relative(WORKSPACE_DIR, resolvedAbsolutePath)
+          .replace(/\\/g, "/");
+        dependencies.push(relativeToWorkspace);
+      }
+    });
 
-    if (resolvedFile) {
-      const absolutePath = resolvedFile.getFilePath();
-      const relativeToWorkspace = path.relative(WORKSPACE_DIR, absolutePath);
-      dependencies.push(relativeToWorkspace);
-    }
+    dependencyGraph[normalizedParent] = dependencies;
   });
-
-  dependencyGraph[targetRelativePath] = dependencies;
 }
 
 function printDependencyTree() {
@@ -92,11 +89,67 @@ function printDependencyTree() {
   }
 }
 
+function calculateAndPrintGravity() {
+  console.log("\n🪐 Gravity Leaderboard (Inbound Dependencies):");
+  console.log("==============================================");
+
+  const gravityScores: Record<string, number> = {};
+
+  Object.keys(dependencyGraph).forEach((file) => {
+    gravityScores[file] = 0;
+  });
+
+  Object.values(dependencyGraph).forEach((dependencies) => {
+    dependencies.forEach((child) => {
+      if (gravityScores[child] !== undefined) {
+        gravityScores[child]++;
+      } else {
+        gravityScores[child] = 1;
+      }
+    });
+  });
+
+  const sortedGravity = Object.entries(gravityScores).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  sortedGravity.forEach(([file, score]) => {
+    console.log(`🏆 ${file} ──> Score: ${score}`);
+  });
+}
+
+function traverseDepthFirst(
+  currentFile: string,
+  visited: Set<string> = new Set(),
+  depth: number = 0
+) {
+  const indent = "  ".repeat(depth);
+
+  if (visited.has(currentFile)) {
+    console.log(`${indent}🛑 Cycle/Repeated Node Avoided: ${currentFile}`);
+    return;
+  }
+
+  console.log(`${indent}└── ${currentFile}`);
+  visited.add(currentFile);
+
+  const children = dependencyGraph[currentFile] || [];
+  children.forEach((child) => {
+    traverseDepthFirst(child, visited, depth + 1);
+  });
+}
+
 async function main() {
   ensureWorkspace();
-  await validateRepository();
-  parseTargetFile();
+  const codeFiles = await validateRepository();
+  parseRepositoryFiles(codeFiles);
   printDependencyTree();
+  calculateAndPrintGravity();
+
+  console.log("\n🚶 Deep Graph Traversal (DFS from Entry Point):");
+  console.log("==============================================");
+  const entryPoint = "app/dashboard/page.tsx";
+  traverseDepthFirst(entryPoint);
 }
 
 main();
