@@ -9,6 +9,11 @@ const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
 const dependencyGraph: Record<string, string[]> = {};
 const circularCycles: string[][] = [];
+const fullyProcessed = new Set<string>();
+
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, "/");
+}
 
 function ensureWorkspace() {
   if (fs.existsSync(WORKSPACE_DIR)) {
@@ -52,7 +57,7 @@ function parseRepositoryFiles(codeFiles: string[]) {
 
   codeFiles.forEach((file) => {
     const absolutePath = path.join(WORKSPACE_DIR, file);
-    const normalizedParent = file.replace(/\\/g, "/");
+    const normalizedParent = normalizePath(file);
 
     if (!fs.existsSync(absolutePath)) return;
 
@@ -65,9 +70,9 @@ function parseRepositoryFiles(codeFiles: string[]) {
 
       if (resolvedFile) {
         const resolvedAbsolutePath = resolvedFile.getFilePath();
-        const relativeToWorkspace = path
-          .relative(WORKSPACE_DIR, resolvedAbsolutePath)
-          .replace(/\\/g, "/");
+        const relativeToWorkspace = normalizePath(
+          path.relative(WORKSPACE_DIR, resolvedAbsolutePath)
+        );
         dependencies.push(relativeToWorkspace);
       }
     });
@@ -104,8 +109,6 @@ function calculateAndPrintGravity() {
     dependencies.forEach((child) => {
       if (gravityScores[child] !== undefined) {
         gravityScores[child]++;
-      } else {
-        gravityScores[child] = 1;
       }
     });
   });
@@ -121,11 +124,11 @@ function calculateAndPrintGravity() {
 
 function findCircularDependencies(
   currentFile: string,
-  visited: Set<string> = new Set(),
   currentPath: string[] = []
 ) {
-  const pathIndex = currentPath.indexOf(currentFile);
+  if (fullyProcessed.has(currentFile)) return;
 
+  const pathIndex = currentPath.indexOf(currentFile);
   if (pathIndex !== -1) {
     const cyclePattern = [...currentPath.slice(pathIndex), currentFile];
     const cycleKey = cyclePattern.join(" -> ");
@@ -137,17 +140,15 @@ function findCircularDependencies(
     return;
   }
 
-  if (visited.has(currentFile)) return;
-
-  visited.add(currentFile);
   currentPath.push(currentFile);
 
   const children = dependencyGraph[currentFile] || [];
   children.forEach((child) => {
-    findCircularDependencies(child, visited, currentPath);
+    findCircularDependencies(child, currentPath);
   });
 
   currentPath.pop();
+  fullyProcessed.add(currentFile);
 }
 
 function printWallOfShame() {
@@ -175,9 +176,8 @@ async function main() {
   printDependencyTree();
   calculateAndPrintGravity();
 
-  const globalVisited = new Set<string>();
   Object.keys(dependencyGraph).forEach((file) => {
-    findCircularDependencies(file, globalVisited, []);
+    findCircularDependencies(file, []);
   });
 
   printWallOfShame();
