@@ -78,13 +78,25 @@ function parseTargetFile() {
   dependencyGraph[targetRelativePath] = dependencies;
 }
 
+function printDependencyTree() {
+  console.log("\n🌳 Visualized Dependency Graph:");
+  console.log("================================");
+
+  for (const [parent, children] of Object.entries(dependencyGraph)) {
+    console.log(parent);
+    children.forEach((child, index) => {
+      const isLast = index === children.length - 1;
+      const connector = isLast ? "└── " : "├── ";
+      console.log(`${connector}${child}`);
+    });
+  }
+}
+
 async function main() {
   ensureWorkspace();
   await validateRepository();
   parseTargetFile();
-
-  console.log("\n🕸️ Generated Dependency Graph:");
-  console.log(JSON.stringify(dependencyGraph, null, 2));
+  printDependencyTree();
 }
 
 main();
