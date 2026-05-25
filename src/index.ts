@@ -16,9 +16,10 @@ const fileExportMaps: Record<string, Record<string, string>> = {};
 const dependencyCommunities: Record<string, string[]> = {};
 const semanticFeatureLabels: Record<string, { name: string; summary: string }> =
   {};
-
-// Step 17 Core Registry: Holds isolated shared infrastructure files
 const sharedInfrastructure: string[] = [];
+
+// Step 18 Core Registry: Holds the finalized, ordered feature onboarding track sequence
+const featureOnboardingSequence: string[] = [];
 
 const CONFIG_NOISE_BLACKLIST = [
   "next.config.ts",
@@ -216,7 +217,6 @@ function extractSharedInfrastructure(codeFiles: string[]): string[] {
     });
   });
 
-  // Threshold: If a file is consumed by 3 or more modules, it's classified as infrastructure
   const INFRASTRUCTURE_THRESHOLD = 3;
 
   const featureFiles = codeFiles.filter((file) => {
@@ -423,6 +423,96 @@ Record<string, { name: string; summary: string }>`;
   }
 }
 
+/**
+ * Step 18 Functional Core: Feature-Aware Onboarding Orders
+ * Calculates inter-dependencies across discovered features and sequences them into milestones.
+ */
+function generateFeatureOnboardingSequence() {
+  console.log("\n🗺️  Analyzing High-Level Feature Inter-Dependencies...");
+  console.log("=========================================================");
+
+  const fileToFeatureMap: Record<string, string> = {};
+
+  sharedInfrastructure.forEach((f) => {
+    fileToFeatureMap[f] = "Shared Infrastructure";
+  });
+  for (const [communityId, files] of Object.entries(dependencyCommunities)) {
+    files.forEach((f) => {
+      fileToFeatureMap[f] = communityId;
+    });
+  }
+
+  // Build the adjacency mapping matrix for features
+  const featureDependencies: Record<string, Set<string>> = {};
+  Object.keys(dependencyCommunities).forEach((id) => {
+    featureDependencies[id] = new Set<string>();
+  });
+
+  for (const [communityId, files] of Object.entries(dependencyCommunities)) {
+    files.forEach((file) => {
+      const fileImports = dependencyGraph[file] || [];
+      fileImports.forEach((importedFile) => {
+        const targetFeature = fileToFeatureMap[importedFile];
+        if (
+          targetFeature &&
+          targetFeature !== communityId &&
+          targetFeature !== "Shared Infrastructure"
+        ) {
+          featureDependencies[communityId]?.add(targetFeature);
+        }
+      });
+    });
+  }
+
+  // Display found dependency links
+  for (const [communityId, targets] of Object.entries(featureDependencies)) {
+    const currentName = semanticFeatureLabels[communityId]?.name || communityId;
+    if (targets.size > 0) {
+      const targetsList = Array.from(targets)
+        .map((t) => semanticFeatureLabels[t]?.name || t)
+        .join(", ");
+      console.log(
+        `🔗 Feature [${currentName}] relies on components from: ${targetsList}`
+      );
+    } else {
+      console.log(
+        `🟢 Feature [${currentName}] is standalone (only relies on Shared Infrastructure)`
+      );
+    }
+  }
+
+  // Perform feature-level topological sequencing pass
+  const visitedFeatures = new Set<string>();
+  const temporaryStack = new Set<string>();
+
+  function visitFeature(id: string) {
+    if (visitedFeatures.has(id)) return;
+    if (temporaryStack.has(id)) {
+      console.log(
+        `⚠️  Circular reference loop caught at feature boundary level for cluster: ${id}`
+      );
+      return;
+    }
+
+    temporaryStack.add(id);
+    const dependencies = featureDependencies[id] || new Set();
+    dependencies.forEach((depId) => visitFeature(depId));
+
+    temporaryStack.delete(id);
+    visitedFeatures.add(id);
+    featureOnboardingSequence.push(id);
+    console.log(
+      `   📌 Sequenced Milestone: Added [${
+        semanticFeatureLabels[id]?.name || id
+      }] to curriculum pipeline`
+    );
+  }
+
+  Object.keys(dependencyCommunities).forEach((id) => visitFeature(id));
+  console.log("=========================================================");
+  console.log("🏁 Feature-Aware Onboarding Order Compilation Complete.\n");
+}
+
 function printDependencyTree() {
   console.log("\n🌳 Visualized Dependency Graph (Symbol-Aware Precision):");
   console.log("=========================================================");
@@ -490,6 +580,30 @@ function printGraphCommunities() {
       console.log(`      └── 📄 ${file}`);
     });
   }
+}
+
+function printFeatureOnboardingSequence() {
+  console.log("\n🎓 Ordered Feature Curriculum Roadmap Timeline:");
+  console.log("==================================================");
+  console.log(
+    "Follow this sequential milestone order to onboard onto high-level functional areas:\n"
+  );
+
+  console.log(`🏁 Milestone 01: [Shared Foundational Infrastructure]`);
+  console.log(
+    `   └── 📝 Core system configurations, utilities, and common tools.`
+  );
+
+  featureOnboardingSequence.forEach((communityId, index) => {
+    const milestoneNum = String(index + 2).padStart(2, "0");
+    const label = semanticFeatureLabels[communityId] || {
+      name: communityId,
+      summary: "No summary details compiled.",
+    };
+    console.log(`🏁 Milestone ${milestoneNum}: [${label.name}]`);
+    console.log(`   └── 📝 ${label.summary}`);
+  });
+  console.log("==================================================");
 }
 
 function compileCurriculumAndDetectCycles(
@@ -581,15 +695,16 @@ async function main() {
   parseRepositoryFiles(codeFiles, project);
 
   const featureFiles = extractSharedInfrastructure(codeFiles);
-
   clusterFilesByGraphDensity(featureFiles);
 
   await runAISemanticLabeling();
 
+  generateFeatureOnboardingSequence();
+
   printDependencyTree();
   calculateAndPrintGravity();
   printGraphCommunities();
-
+  printFeatureOnboardingSequence();
   Object.keys(dependencyGraph).forEach((file) => {
     compileCurriculumAndDetectCycles(file, []);
   });
