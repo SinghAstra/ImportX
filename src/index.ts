@@ -7,8 +7,6 @@ import { Project } from "ts-morph";
 const REPO_URL = "https://github.com/SinghAstra/Sample-FeatureX";
 const WORKSPACE_DIR = path.join(process.cwd(), "tmp-workspace");
 
-// check if the repo is downloaded or not
-// if not then download it
 function ensureWorkspace() {
   if (fs.existsSync(WORKSPACE_DIR)) {
     console.log("✅ Cache found: Using existing tmp-workspace.");
@@ -20,7 +18,6 @@ function ensureWorkspace() {
   }
 }
 
-// Check if majority of files are of Javascript / Typescript
 async function validateRepository() {
   const allFiles = await glob("**/*", {
     cwd: WORKSPACE_DIR,
@@ -45,7 +42,9 @@ async function validateRepository() {
 }
 
 function parseTargetFile() {
-  const project = new Project();
+  const project = new Project({
+    tsConfigFilePath: path.join(WORKSPACE_DIR, "tsconfig.json"),
+  });
 
   const targetPath = path.join(WORKSPACE_DIR, "app/dashboard/page.tsx");
 
@@ -54,17 +53,26 @@ function parseTargetFile() {
     return;
   }
 
-  console.log(`\n🌳 Loading AST Tree for: src/app/dashboard/page.tsx`);
+  console.log(`\n🌳 Loading AST Tree for: app/dashboard/page.tsx`);
   const sourceFile = project.addSourceFileAtPath(targetPath);
-
   const importDeclarations = sourceFile.getImportDeclarations();
 
-  console.log(`📦 Found ${importDeclarations.length} raw import strings:`);
+  console.log(`🔍 Resolving Import Paths:`);
   console.log("--------------------------------------");
 
   importDeclarations.forEach((declaration) => {
     const moduleSpecifier = declaration.getModuleSpecifierValue();
-    console.log(`   - ${moduleSpecifier}`);
+    const resolvedFile = declaration.getModuleSpecifierSourceFile();
+
+    if (resolvedFile) {
+      const absolutePath = resolvedFile.getFilePath();
+      const relativeToWorkspace = path.relative(WORKSPACE_DIR, absolutePath);
+      console.log(`   - "${moduleSpecifier}" ──> ${relativeToWorkspace}`);
+    } else {
+      console.log(
+        `   - "${moduleSpecifier}" ──> ⚠️ Unresolved (External/Broken)`
+      );
+    }
   });
 }
 
