@@ -66,6 +66,8 @@ async function validateRepository(): Promise<string[]> {
     return hasValidExtension && !isConfigNoise;
   });
 
+  console.log("codeFiles[0] is ", codeFiles[0]);
+
   const codeRatio = (codeFiles.length / allFiles.length) * 100;
   console.log(
     `📊 Repo Composition: ${codeRatio.toFixed(1)}% Application Code Files.`
@@ -78,25 +80,6 @@ async function validateRepository(): Promise<string[]> {
   return codeFiles;
 }
 
-/**
- * ============================================================================
- * GLOBAL TRUTH REGISTRY INDEXER
- * * OBJECT PSEUDO-SYNTAX BUILT (fileExportMaps):
- * Record<FileBeingInspected, Record<ExportedSymbolName, TrueOriginFile>>
- * * Example Layout:
- * {
- * "packages/auth/index.ts": {
- * "login": "packages/auth/src/core-strategy.ts"
- * }
- * }
- * * THE 5 CORE ITEMS HANDLED IN THIS METHOD:
- * 1. Class Exports           - Captures direct class birthplaces
- * 2. Function Exports        - Captures direct function birthplaces
- * 3. Variable Exports        - Captures direct variable birthplaces via statement wrappers
- * 4. Named Barrel Exports    - Redirects explicit bracketed proxies to target origins
- * 5. Wildcard Barrel Exports - Recursively flattens and clones lazy star (*) statements
- * ============================================================================
- */
 function buildGlobalExportMaps(codeFiles: string[], project: Project) {
   codeFiles.forEach((file) => {
     const absolutePath = path.join(WORKSPACE_DIR, file);
@@ -106,6 +89,7 @@ function buildGlobalExportMaps(codeFiles: string[], project: Project) {
     if (!fs.existsSync(absolutePath)) return;
 
     const sourceFile = project.addSourceFileAtPath(absolutePath);
+
     const currentMap = fileExportMaps[normalizedFile];
     if (!currentMap) return;
 
