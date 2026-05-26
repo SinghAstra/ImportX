@@ -12,6 +12,7 @@ const circularCycles: string[][] = [];
 const fullyProcessed = new Set<string>();
 const learningCurriculum: string[] = [];
 
+// Record<FileBeingInspected, Record<ExportedSymbolName, TrueOriginFile>>
 const fileExportMaps: Record<string, Record<string, string>> = {};
 const dependencyCommunities: Record<string, string[]> = {};
 const semanticFeatureLabels: Record<string, { name: string; summary: string }> =
@@ -77,6 +78,25 @@ async function validateRepository(): Promise<string[]> {
   return codeFiles;
 }
 
+/**
+ * ============================================================================
+ * GLOBAL TRUTH REGISTRY INDEXER
+ * * OBJECT PSEUDO-SYNTAX BUILT (fileExportMaps):
+ * Record<FileBeingInspected, Record<ExportedSymbolName, TrueOriginFile>>
+ * * Example Layout:
+ * {
+ * "packages/auth/index.ts": {
+ * "login": "packages/auth/src/core-strategy.ts"
+ * }
+ * }
+ * * THE 5 CORE ITEMS HANDLED IN THIS METHOD:
+ * 1. Class Exports           - Captures direct class birthplaces
+ * 2. Function Exports        - Captures direct function birthplaces
+ * 3. Variable Exports        - Captures direct variable birthplaces via statement wrappers
+ * 4. Named Barrel Exports    - Redirects explicit bracketed proxies to target origins
+ * 5. Wildcard Barrel Exports - Recursively flattens and clones lazy star (*) statements
+ * ============================================================================
+ */
 function buildGlobalExportMaps(codeFiles: string[], project: Project) {
   codeFiles.forEach((file) => {
     const absolutePath = path.join(WORKSPACE_DIR, file);
@@ -721,24 +741,24 @@ async function main() {
   buildGlobalExportMaps(codeFiles, project);
   parseRepositoryFiles(codeFiles, project);
 
-  const featureFiles = extractSharedInfrastructure(codeFiles);
-  clusterFilesByGraphDensity(featureFiles);
+  // const featureFiles = extractSharedInfrastructure(codeFiles);
+  // clusterFilesByGraphDensity(featureFiles);
 
-  await runAISemanticLabeling();
-  generateFeatureOnboardingSequence();
+  // await runAISemanticLabeling();
+  // generateFeatureOnboardingSequence();
 
-  writeCurriculumJson();
+  // writeCurriculumJson();
 
-  printDependencyTree();
-  calculateAndPrintGravity();
-  printGraphCommunities();
+  // printDependencyTree();
+  // calculateAndPrintGravity();
+  // printGraphCommunities();
 
-  Object.keys(dependencyGraph).forEach((file) => {
-    compileCurriculumAndDetectCycles(file, []);
-  });
+  // Object.keys(dependencyGraph).forEach((file) => {
+  //   compileCurriculumAndDetectCycles(file, []);
+  // });
 
-  printWallOfShame();
-  printLearningCurriculum();
+  // printWallOfShame();
+  // printLearningCurriculum();
 }
 
 main();
