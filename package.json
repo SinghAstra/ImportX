@@ -1,35 +1,34 @@
 {
-  "name": "featurex",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "summary-x",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
   "type": "module",
-  "dependencies": {
-    "balanced-match": "^4.0.4",
-    "brace-expansion": "^5.0.6",
-    "code-block-writer": "^13.0.3",
-    "fdir": "^6.5.0",
-    "glob": "^13.0.6",
-    "lru-cache": "^11.3.6",
-    "minimatch": "^10.2.5",
-    "minipass": "^7.1.3",
-    "path-browserify": "^1.0.1",
-    "path-scurry": "^2.0.2",
-    "picomatch": "^4.0.4",
-    "tinyglobby": "^0.2.16",
-    "ts-morph": "^28.0.0",
-    "undici-types": "^7.24.6"
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "build:shared": "turbo run build --filter=@repo/shared",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.22.3",
-    "typescript": "^6.0.3"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.0.0",
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.1",
+    "prettier": "^3.9.6",
+    "turbo": "^2.10.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
   },
-  "scripts": {
-    "dev": "tsx --env-file=.env src/index.ts"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  }
 }
