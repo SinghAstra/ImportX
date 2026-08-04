@@ -102,7 +102,6 @@ export const repositoryService = {
         owner,
         avatar: repositoryAvatarUrl,
         status: REPOSITORY_STATUS.PENDING,
-        totalSize: BigInt(0),
       },
     });
 
@@ -212,11 +211,6 @@ export const repositoryService = {
       status: repo.status,
       readme: repo.readme,
       latestJobId: repo.jobs[0]?.id || null,
-      totalFiles: repo.totalFiles,
-      supportedFiles: repo.supportedFiles,
-      ignoredFiles: repo.ignoredFiles,
-      totalFolders: repo.totalFolders,
-      totalSize: repo.totalSize.toString(),
       createdAt: repo.createdAt.toISOString(),
       updatedAt: repo.updatedAt.toISOString(),
     };
@@ -243,12 +237,7 @@ export const repositoryService = {
       avatar: repo.avatar,
       status: repo.status,
       readme: repo.readme,
-      totalFiles: repo.totalFiles,
-      supportedFiles: repo.supportedFiles,
       latestJobId: null,
-      ignoredFiles: repo.ignoredFiles,
-      totalFolders: repo.totalFolders,
-      totalSize: repo.totalSize.toString(),
       createdAt: repo.createdAt.toISOString(),
       updatedAt: repo.updatedAt.toISOString(),
     }));

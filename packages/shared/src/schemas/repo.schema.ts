@@ -39,11 +39,6 @@ export const repositoryDataSchema = z.object({
   avatar: z.url(),
   status: repositoryStatusSchema,
   readme: z.string().nullable(),
-  totalFiles: z.number().int().nonnegative(),
-  supportedFiles: z.number().int().nonnegative(),
-  ignoredFiles: z.number().int().nonnegative(),
-  totalFolders: z.number().int().nonnegative(),
-  totalSize: z.string(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
