@@ -50,11 +50,6 @@ export async function syncFileIndex(repoId: string, stats: ScanStats) {
     where: { id: repoId },
     data: {
       status: REPOSITORY_STATUS.PROCESSING,
-      totalFiles: stats.totalFiles,
-      supportedFiles: stats.supportedFiles,
-      ignoredFiles: stats.ignoredFiles,
-      totalFolders: stats.totalFolders,
-      totalSize: stats.totalSize,
     },
   });
 
