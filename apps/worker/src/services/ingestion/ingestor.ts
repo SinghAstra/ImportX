@@ -1,13 +1,17 @@
 import { prisma } from "@repo/db";
-import { JOB_STATUS, REPOSITORY_STATUS, logError } from "@repo/shared";
-import { trackProgress } from "@repo/shared/server";
+import {
+  JOB_NAMES,
+  JOB_STATUS,
+  REPOSITORY_STATUS,
+  logError,
+} from "@repo/shared";
+import { dependencyAnalysisQueue, trackProgress } from "@repo/shared/server";
 import { getWorkspacePath } from "../../utils/workspace";
 
 import { cloneRepository } from "./git";
 import { scanWorkspace } from "./scanner";
 import { syncFileIndex } from "./indexer";
 import { ScanStats } from "./types";
-import { dispatchSummaryJobs } from "./dispatcher";
 
 export const ingestor = {
   async run(jobId: string) {
@@ -93,8 +97,10 @@ export const ingestor = {
       await scanWorkspace(workspacePath, workspacePath, stats);
 
       // 6. Sync File State to DB
-      const { addedCount, modifiedCount, deletedCount, targetsToQueue } =
-        await syncFileIndex(repo.id, stats);
+      const { addedCount, modifiedCount, deletedCount } = await syncFileIndex(
+        repo.id,
+        stats
+      );
 
       // ✨ KILL-SWITCH 2: Check if cancelled during the clone/scan phase
       console.log(
@@ -111,7 +117,7 @@ export const ingestor = {
           `🛑 [Ingestor] Job ${jobId} was CANCELLED while processing. Aborting dispatch.`
         );
 
-        return; // Exit silently. The new job will take over from here.
+        return;
       }
 
       await trackProgress({
@@ -122,6 +128,11 @@ export const ingestor = {
       });
 
       // 7. Dispatch or Complete
+
+      // ✨ IMPORTX FAST-TRACK: We are commenting out the AI summarization dispatch
+      // and forcing the pipeline to immediately complete after indexing the files.
+
+      /* 
       if (targetsToQueue.length > 0) {
         await dispatchSummaryJobs(repo.id, jobId, targetsToQueue);
 
@@ -131,32 +142,26 @@ export const ingestor = {
           status: JOB_STATUS.RUNNING,
           message: `Initializing AI analysis for ${targetsToQueue.length} files...`,
         });
-      } else {
-        console.log(
-          `⚙️ [Ingestor DB] No files require analysis. Updating repo ${repo.id} to COMPLETED...`
-        );
+      } else { 
+      */
+      // 7. Dispatch Dependency Analysis
+      console.log(
+        `⚙️ [Ingestor DB] Bypassing AI summaries. Triggering Dependency Analysis...`
+      );
 
-        await prisma.repository.update({
-          where: { id: repo.id },
-          data: { status: REPOSITORY_STATUS.COMPLETED },
-        });
+      await dependencyAnalysisQueue.add(JOB_NAMES.ANALYZE_DEPENDENCIES, {
+        repositoryId: repo.id,
+        jobId: jobId,
+      });
 
-        console.log(`⚙️ [Ingestor DB] Updating job ${jobId} to COMPLETED...`);
+      await trackProgress({
+        jobId,
+        repositoryId: repo.id,
+        status: JOB_STATUS.RUNNING,
+        message: "File indexing complete. Starting AST dependency analysis...",
+      });
 
-        await prisma.job.update({
-          where: { id: jobId },
-          data: { status: JOB_STATUS.COMPLETED, completedAt: new Date() },
-        });
-
-        console.log(`✅ [Ingestor DB] Job & Repo marked as COMPLETED.`);
-
-        await trackProgress({
-          jobId,
-          repositoryId: repo.id,
-          status: JOB_STATUS.COMPLETED,
-          message: "Workspace is up to date.",
-        });
-      }
+      // }
     } catch (error) {
       logError(error);
 
