@@ -28,10 +28,19 @@ export const fileSummarizationJobDataSchema = z.object({
   runId: z.number().int().nonnegative(),
 });
 
+export const dependencyAnalysisJobDataSchema = z.object({
+  jobId: z.uuid(),
+  repositoryId: z.uuid(),
+});
+
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
 export type RepoIngestionJobData = z.infer<typeof repoIngestionJobDataSchema>;
 
 export type FileSummarizationJobData = z.infer<
   typeof fileSummarizationJobDataSchema
+>;
+
+export type DependencyAnalysisJobData = z.infer<
+  typeof dependencyAnalysisJobDataSchema
 >;

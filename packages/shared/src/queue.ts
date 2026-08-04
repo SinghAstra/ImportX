@@ -1,7 +1,11 @@
 import { Queue, QueueOptions } from "bullmq";
 import { redisConnection } from "./config/redis";
 import { QUEUE_NAMES } from "./constants";
-import { FileSummarizationJobData, RepoIngestionJobData } from "./schemas";
+import {
+  DependencyAnalysisJobData,
+  FileSummarizationJobData,
+  RepoIngestionJobData,
+} from "./schemas";
 
 const queueOptions: QueueOptions = {
   connection: redisConnection,
@@ -23,6 +27,11 @@ export const repositoryIngestionQueue = new Queue<RepoIngestionJobData>(
 
 export const fileSummarizationQueue = new Queue<FileSummarizationJobData>(
   QUEUE_NAMES.FILE_SUMMARIZATION,
+  queueOptions
+);
+
+export const dependencyAnalysisQueue = new Queue<DependencyAnalysisJobData>(
+  QUEUE_NAMES.DEPENDENCY_ANALYSIS,
   queueOptions
 );
 
@@ -48,6 +57,7 @@ export async function wipeAllQueues() {
   await Promise.all([
     deleteAllJobsInQueue(repositoryIngestionQueue),
     deleteAllJobsInQueue(fileSummarizationQueue),
+    deleteAllJobsInQueue(dependencyAnalysisQueue),
   ]);
 
   console.log("✨ All queues have been completely cleared.");
