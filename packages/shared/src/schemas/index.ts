@@ -1,7 +1,9 @@
-export * from "./api.schema.js";
+export * from "./api.schema";
 
-export * from "./auth/index.js";
+export * from "./auth/index";
 
-export * from "./job.schema.js";
+export * from "./job.schema";
 
-export * from "./repo.schema.js";
+export * from "./repo.schema";
+
+export * from "./graph.schema";

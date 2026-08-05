@@ -7,6 +7,8 @@ import {
   createRepoResponseSchema,
   DeleteRepoResponse,
   deleteRepoResponseSchema,
+  GetGraphResponse,
+  getGraphResponseSchema,
   type GetRepositoriesResponse,
   getRepositoriesResponseSchema,
   type GetRepositoryFilesResponse,
@@ -64,5 +66,9 @@ export const repoApi = {
     return apiClient.delete("/api/repo/bulk", deleteRepoResponseSchema, {
       body: { ids },
     });
+  },
+
+  getGraph: (id: string): Promise<ApiResponse<GetGraphResponse>> => {
+    return apiClient.get(`/api/repo/${id}/graph`, getGraphResponseSchema);
   },
 };
