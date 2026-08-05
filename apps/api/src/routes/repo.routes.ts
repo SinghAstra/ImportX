@@ -22,4 +22,6 @@ router.delete("/bulk", repositoryController.deleteBulk);
 
 router.delete("/:id", repositoryController.deleteSingle);
 
+router.get("/:id/graph", repositoryController.getGraph);
+
 export { router as repoRouter };

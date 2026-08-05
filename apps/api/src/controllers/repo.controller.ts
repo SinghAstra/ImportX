@@ -177,4 +177,26 @@ export const repositoryController = {
       next(error);
     }
   },
+
+  getGraph: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = z.string().parse(req.params.id);
+
+      if (!req.user) {
+        throw new UnauthorizedError(
+          AUTH_ERROR_CODES.INVALID_CREDENTIALS,
+          "Please sign in to continue."
+        );
+      }
+
+      const graphData = await repositoryService.getRepositoryGraph(
+        id,
+        req.user.id
+      );
+
+      res.status(200).json(successResponse(graphData));
+    } catch (error) {
+      next(error);
+    }
+  },
 };

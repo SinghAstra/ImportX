@@ -549,4 +549,47 @@ export const repositoryService = {
       message: `${validRepoIds.length} repositories successfully removed.`,
     };
   },
+
+  async getRepositoryGraph(id: string, userId: string) {
+    console.log(
+      `⚙️ [Repository Service DB] Validating access for repo graph ${id}...`
+    );
+
+    const repo = await prisma.repository.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+
+    if (!repo) {
+      throw new NotFoundError(
+        COMMON_ERROR_CODES.ROUTE_NOT_FOUND,
+        "Repository not found or access denied."
+      );
+    }
+
+    console.log(
+      `⚙️ [Repository Service DB] Fetching graph nodes and edges for repo ${id}...`
+    );
+
+    const nodes = await prisma.graphNode.findMany({
+      where: { repositoryId: id },
+      select: {
+        id: true,
+        filePath: true,
+        isExternal: true,
+      },
+    });
+
+    const edges = await prisma.graphEdge.findMany({
+      where: { repositoryId: id },
+      select: {
+        id: true,
+        sourceId: true,
+        targetId: true,
+        type: true,
+      },
+    });
+
+    return { nodes, edges };
+  },
 };
