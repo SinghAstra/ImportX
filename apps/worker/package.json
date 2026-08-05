@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js",
-    "dev": "npx tsx scr/index.ts",
+    "dev": "npx tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --clean"
   },
   "dependencies": {

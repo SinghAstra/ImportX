@@ -22,12 +22,9 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
         y: (index * 211) % 600,
       },
       data: { label: node.filePath.split("/").pop() },
-      style: {
-        background: node.isExternal ? "#f3f4f6" : "#ffffff",
-        border: "1px solid #d1d5db",
-        borderRadius: "8px",
-        padding: "10px",
-      },
+      className: node.isExternal
+        ? "bg-muted text-muted-foreground border-border rounded-lg shadow-none px-4 py-2 font-mono text-xs"
+        : "bg-card text-card-foreground border-border rounded-lg shadow-sm px-4 py-2 font-mono text-xs",
     }));
 
     const flowEdges = data.edges.map((edge) => ({
@@ -35,6 +32,8 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
       source: edge.sourceId,
       target: edge.targetId,
       animated: true,
+      // Swapped hsl to oklch to perfectly match your globals.css
+      style: { stroke: "oklch(var(--muted-foreground) / 0.4)" },
     }));
 
     return { nodes: flowNodes, edges: flowEdges };
@@ -42,22 +41,24 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
 
   if (isLoading)
     return (
-      <div className="h-150 w-full flex items-center justify-center border rounded-lg">
+      <div className="h-[600px] w-full flex items-center justify-center border rounded-lg bg-background text-muted-foreground">
         Loading graph data...
       </div>
     );
 
   if (error)
     return (
-      <div className="text-red-500">Error loading graph: {error.message}</div>
+      <div className="h-[600px] w-full flex items-center justify-center border rounded-lg text-destructive">
+        Error loading graph: {error.message}
+      </div>
     );
 
   return (
-    <div className="h-150 w-full border rounded-lg overflow-hidden">
-      <ReactFlow nodes={nodes} edges={edges} fitView>
+    <div className="h-[600px] w-full border rounded-lg overflow-hidden bg-background">
+      <ReactFlow nodes={nodes} edges={edges} fitView colorMode="dark">
         <Background />
         <Controls />
-        <MiniMap />
+        <MiniMap zoomable pannable />
       </ReactFlow>
     </div>
   );
