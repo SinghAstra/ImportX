@@ -15,9 +15,12 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
   const { nodes, edges } = useMemo(() => {
     if (!data) return { nodes: [], edges: [] };
 
-    const flowNodes = data.nodes.map((node) => ({
+    const flowNodes = data.nodes.map((node, index) => ({
       id: node.id,
-      position: { x: Math.random() * 800, y: Math.random() * 600 },
+      position: {
+        x: (index * 137) % 800,
+        y: (index * 211) % 600,
+      },
       data: { label: node.filePath.split("/").pop() },
       style: {
         background: node.isExternal ? "#f3f4f6" : "#ffffff",
@@ -39,7 +42,7 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
 
   if (isLoading)
     return (
-      <div className="h-[600px] w-full flex items-center justify-center border rounded-lg">
+      <div className="h-150 w-full flex items-center justify-center border rounded-lg">
         Loading graph data...
       </div>
     );
@@ -50,7 +53,7 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
     );
 
   return (
-    <div className="h-[600px] w-full border rounded-lg overflow-hidden bg-slate-50">
+    <div className="h-150 w-full border rounded-lg overflow-hidden">
       <ReactFlow nodes={nodes} edges={edges} fitView>
         <Background />
         <Controls />

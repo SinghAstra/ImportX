@@ -7,4 +7,5 @@ export const repoKeys = {
   jobs: (repoId: string) => [...repoKeys.detail(repoId), "jobs"] as const,
   jobLogs: (repoId: string, jobId: string) =>
     [...repoKeys.jobs(repoId), jobId, "logs"] as const,
+  graph: (id: string) => [...repoKeys.detail(id), "graph"] as const,
 } as const;
