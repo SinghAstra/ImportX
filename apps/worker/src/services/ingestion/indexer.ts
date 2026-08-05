@@ -114,8 +114,6 @@ export async function syncFileIndex(repoId: string, stats: ScanStats) {
 
   console.log(`✅ [Indexer] Synchronization completed successfully.`);
 
-  // 1.Auto-recover previously failed files
-  // If a file failed in a previous run (e.g., API timeout), reset it so we try again.
   const resetResult = await prisma.repositoryFile.updateMany({
     where: {
       repositoryId: repoId,
@@ -132,7 +130,6 @@ export async function syncFileIndex(repoId: string, stats: ScanStats) {
     );
   }
 
-  // 2. Grab EVERYTHING that is pending (new additions, modified files, and auto-recovered files)
   const targetsToQueue = await prisma.repositoryFile.findMany({
     where: {
       repositoryId: repoId,

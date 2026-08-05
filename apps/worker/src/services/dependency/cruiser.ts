@@ -23,20 +23,16 @@ export async function extractAndStoreGraph(
     message: "Analyzing codebase AST with Madge...",
   });
 
-  // 1. Run Madge
   console.log(`⏳ [Madge] Executing Madge...`);
 
   const madgeResult = await madge(workspacePath, {
     baseDir: workspacePath,
-    // Strictly ignore massive folders so it doesn't hang
     excludeRegExp: [/node_modules/, /\.git/, /dist/, /build/, /\.next/],
     fileExtensions: ["js", "jsx", "ts", "tsx"],
   });
 
-  // Returns { "source.ts": ["target1.ts", "target2.ts"] }
   const graphObj = madgeResult.obj();
 
-  // 2. Extract unique nodes
   const uniqueFiles = new Set<string>();
 
   for (const [source, targets] of Object.entries(graphObj)) {
@@ -58,38 +54,38 @@ export async function extractAndStoreGraph(
     message: `AST analysis complete. Preparing to save ${filesArray.length} nodes...`,
   });
 
-  // 3. Clean up previous runs
   console.log(`🧹 [Madge DB] Cleaning up previous graph data for repo...`);
 
   await prisma.graphEdge.deleteMany({ where: { repositoryId: repoId } });
 
   await prisma.graphNode.deleteMany({ where: { repositoryId: repoId } });
 
-  // 4. Insert Nodes Iteratively
-  console.log(`💾 [Madge DB] Inserting Graph Nodes...`);
+  console.log(`💾 [Madge DB] Inserting ${filesArray.length} Graph Nodes...`);
+
+  const nodesToInsert = filesArray.map((filePath) => ({
+    repositoryId: repoId,
+    filePath: filePath,
+    isExternal: false,
+  }));
+
+  await prisma.graphNode.createMany({
+    data: nodesToInsert,
+    skipDuplicates: true,
+  });
+
+  console.log(`🔍 [Madge DB] Fetching generated Node IDs...`);
+
+  const insertedNodes = await prisma.graphNode.findMany({
+    where: { repositoryId: repoId },
+    select: { id: true, filePath: true },
+  });
 
   const nodeDbIds = new Map<string, string>();
 
-  for (let i = 0; i < filesArray.length; i++) {
-    const filePath = filesArray[i];
-
-    // Madge resolves everything relative to baseDir, making it super clean
-    const node = await prisma.graphNode.create({
-      data: {
-        repositoryId: repoId,
-        filePath: filePath,
-        isExternal: false, // Madge with our config skips external node_modules
-      },
-    });
-
-    nodeDbIds.set(filePath, node.id);
-
-    if ((i + 1) % 500 === 0) {
-      console.log(`⏳ [Madge DB] Saved ${i + 1}/${filesArray.length} nodes...`);
-    }
+  for (const node of insertedNodes) {
+    nodeDbIds.set(node.filePath, node.id);
   }
 
-  // 5. Prepare Edges
   console.log(`🧮 [Madge] Mapping edge relationships...`);
 
   const edgesToInsert = [];

@@ -27,10 +27,8 @@ export const dependencyAnalyzer = {
     const workspacePath = getWorkspacePath(repositoryId);
 
     try {
-      // 1. Run the extraction and DB save
       await extractAndStoreGraph(workspacePath, repositoryId, jobId);
 
-      // 2. Mark everything as COMPLETED
       console.log(
         `⚙️ [Analyzer DB] Updating repo ${repositoryId} to COMPLETED...`
       );
