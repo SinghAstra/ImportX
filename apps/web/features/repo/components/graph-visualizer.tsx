@@ -1,8 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-import { ReactFlow, Background, Controls, MiniMap } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 import { useGetGraph } from "../hooks/use-get-graph";
 
 interface GraphVisualizerProps {
@@ -12,54 +9,56 @@ interface GraphVisualizerProps {
 export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
   const { data, isLoading, error } = useGetGraph(repositoryId);
 
-  const { nodes, edges } = useMemo(() => {
-    if (!data) return { nodes: [], edges: [] };
-
-    const flowNodes = data.nodes.map((node, index) => ({
-      id: node.id,
-      position: {
-        x: (index * 137) % 800,
-        y: (index * 211) % 600,
-      },
-      data: { label: node.filePath.split("/").pop() },
-      className: node.isExternal
-        ? "bg-muted text-muted-foreground border-border rounded-lg shadow-none px-4 py-2 font-mono text-xs"
-        : "bg-card text-card-foreground border-border rounded-lg shadow-sm px-4 py-2 font-mono text-xs",
-    }));
-
-    const flowEdges = data.edges.map((edge) => ({
-      id: edge.id,
-      source: edge.sourceId,
-      target: edge.targetId,
-      animated: true,
-      // Swapped hsl to oklch to perfectly match your globals.css
-      style: { stroke: "oklch(var(--muted-foreground) / 0.4)" },
-    }));
-
-    return { nodes: flowNodes, edges: flowEdges };
-  }, [data]);
-
-  if (isLoading)
+  if (isLoading) {
     return (
-      <div className="h-[600px] w-full flex items-center justify-center border rounded-lg bg-background text-muted-foreground">
-        Loading graph data...
+      <div className="h-150 w-full flex items-center justify-center border rounded-lg text-muted-foreground">
+        Loading dependencies...
       </div>
     );
+  }
 
-  if (error)
-    return (
-      <div className="h-[600px] w-full flex items-center justify-center border rounded-lg text-destructive">
-        Error loading graph: {error.message}
-      </div>
-    );
+  if (error || !data) {
+    return <div className="text-destructive">Failed to load dependencies.</div>;
+  }
+
+  const dependencyMap = new Map<string, string[]>();
+
+  data.edges.forEach((edge) => {
+    const sourceNode = data.nodes.find((n) => n.id === edge.sourceId);
+
+    const targetNode = data.nodes.find((n) => n.id === edge.targetId);
+
+    if (sourceNode && targetNode) {
+      const existing = dependencyMap.get(sourceNode.filePath) || [];
+
+      dependencyMap.set(sourceNode.filePath, [
+        ...existing,
+        targetNode.filePath,
+      ]);
+    }
+  });
 
   return (
-    <div className="h-[600px] w-full border rounded-lg overflow-hidden bg-background">
-      <ReactFlow nodes={nodes} edges={edges} fitView colorMode="dark">
-        <Background />
-        <Controls />
-        <MiniMap zoomable pannable />
-      </ReactFlow>
+    <div className="h-full w-full border rounded-lg overflow-y-auto bg-card p-4">
+      <div className="space-y-4">
+        {Array.from(dependencyMap.entries()).map(([filePath, imports]) => (
+          <div key={filePath} className="p-3 border rounded bg-background">
+            <span className="font-mono text-sm font-medium text-primary">
+              📄 {filePath.split("/").pop()}
+            </span>
+            <ul className="mt-2 pl-4 border-l-2 border-muted space-y-1">
+              {imports.map((importedFile, idx) => (
+                <li
+                  key={idx}
+                  className="font-mono text-xs text-muted-foreground truncate"
+                >
+                  ↳ imports {importedFile.split("/").pop()}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

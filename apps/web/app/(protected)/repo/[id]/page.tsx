@@ -1,7 +1,7 @@
 import { RepoWorkspaceShell } from "@/features/repo/components/repo-workspace-shell";
 import { repoQueryFn } from "@/features/repo/hooks/use-repo";
 import { repoFilesQueryFn } from "@/features/repo/hooks/use-repo-files";
-import { repoGraphQueryFn } from "@/features/repo/hooks/use-get-graph"; // Add this import
+import { repoGraphQueryFn } from "@/features/repo/hooks/use-get-graph";
 import { repoKeys } from "@/features/repo/query-keys";
 import { GetRepositoryResponse, REPOSITORY_STATUS } from "@repo/shared";
 import {
