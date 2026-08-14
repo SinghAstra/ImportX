@@ -186,7 +186,7 @@ export function GraphVisualizer({
       return (
         <div
           key={node.fullPath}
-          className="border rounded-lg bg-background/40 hover:bg-background/80 transition-colors overflow-hidden"
+          className="border rounded-lg transition-colors overflow-hidden"
           style={{ marginLeft: `${depth * 12}px` }}
         >
           <button
@@ -211,7 +211,7 @@ export function GraphVisualizer({
           </button>
 
           {isFileExpanded && imports.length > 0 && (
-            <div className="px-4 pb-2.5 pt-1 border-t bg-card/30 space-y-1 animate-in fade-in duration-200">
+            <div className="px-4 pb-2.5 pt-1 border-t space-y-1 animate-in fade-in duration-200">
               <p className="text-[10px] font-mono text-muted-foreground/70 mb-1">
                 Linked Dependencies:
               </p>
@@ -221,7 +221,7 @@ export function GraphVisualizer({
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 font-mono text-xs text-muted-foreground py-1 px-2 rounded hover:bg-secondary/50 transition-colors"
+                    className="flex items-center gap-2 font-mono text-xs text-muted-foreground py-1 px-2 rounded transition-colors"
                   >
                     <span className="text-primary/60">↳</span>
                     <span className="truncate flex-1">{importedFile}</span>
