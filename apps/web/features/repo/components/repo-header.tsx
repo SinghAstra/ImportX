@@ -17,6 +17,7 @@ import { STATUS_BORDER_MAP } from "@/lib/constants";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import {
+  ChevronsUpDown,
   Disc3,
   ExternalLink,
   GitFork,
@@ -36,11 +37,17 @@ import { useResyncRepository } from "../hooks/use-resync-repo";
 interface RepoHeaderProps {
   onCopyDependencies: () => void;
   isCopyDisabled: boolean;
+  isExpandedAll: boolean;
+  onToggleExpandAll: () => void;
+  isExpandDisabled: boolean;
 }
 
 export function RepoHeader({
   onCopyDependencies,
   isCopyDisabled,
+  isExpandedAll,
+  onToggleExpandAll,
+  isExpandDisabled,
 }: RepoHeaderProps) {
   const { toggleSidebar } = useSidebar();
 
@@ -172,6 +179,27 @@ export function RepoHeader({
                 className="rounded-full text-muted-foreground hover:text-foreground border bg-card/50 hover:bg-card/70 size-7 sm:size-8 disabled:opacity-40"
               >
                 <Share2 className="size-3.5" />
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isExpandDisabled}
+                onClick={onToggleExpandAll}
+                title={isExpandedAll ? "Collapse All" : "Expand All"}
+                aria-label={isExpandedAll ? "Collapse All" : "Expand All"}
+                className={cn(
+                  "rounded-full text-muted-foreground hover:text-foreground transition-colors border bg-card/50 hover:bg-card/70 size-7 sm:size-8 disabled:opacity-40",
+                  isExpandedAll && "bg-secondary text-primary border-primary/20"
+                )}
+              >
+                <ChevronsUpDown
+                  className={cn(
+                    "size-3.5 transition-transform duration-200",
+                    isExpandedAll && "rotate-180 text-primary"
+                  )}
+                />
               </Button>
             </div>
           )}
