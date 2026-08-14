@@ -1,11 +1,15 @@
 import madge from "madge";
 import { prisma } from "@repo/db";
 import { trackProgress } from "@repo/shared/server";
-import { JOB_STATUS } from "@repo/shared";
+import { JOB_STATUS, logError } from "@repo/shared";
+import path from "path";
+import fs from "fs";
 
 const EDGE_BATCH_SIZE = 100;
 
 const BATCH_DELAY_MS = 50;
+
+const BARE_IMPORT_REGEX = /(?:from|import)\s+['"]((?!\.|\/)[^'"]+)['"]/g;
 
 export async function extractAndStoreGraph(
   workspacePath: string,
@@ -27,26 +31,38 @@ export async function extractAndStoreGraph(
 
   const madgeResult = await madge(workspacePath, {
     baseDir: workspacePath,
-    excludeRegExp: [/node_modules/, /\.git/, /dist/, /build/, /\.next/],
+    excludeRegExp: [/\.git/, /dist/, /build/, /\.next/],
     fileExtensions: ["js", "jsx", "ts", "tsx"],
-    includeNpm: true,
   });
 
   const graphObj = madgeResult.obj();
 
-  const [sampleSource, sampleTargets] = Object.entries(graphObj)[0] || [];
+  for (const sourceFile of Object.keys(graphObj)) {
+    try {
+      const fullPath = path.join(workspacePath, sourceFile);
 
-  if (sampleSource) {
-    console.log(`👀 [Debug] Graph Structure Sample:`);
+      const fileContent = fs.readFileSync(fullPath, "utf-8");
 
-    console.log(`Source: ${sampleSource}`);
+      let match;
 
-    console.log(
-      `Targets:`,
-      Array.isArray(sampleTargets) && sampleTargets.length > 0
-        ? [sampleTargets[0]]
-        : sampleTargets
-    );
+      while ((match = BARE_IMPORT_REGEX.exec(fileContent)) !== null) {
+        let packageName = match[1];
+
+        if (packageName.startsWith("@")) {
+          const parts = packageName.split("/");
+
+          packageName = `${parts[0]}/${parts[1]}`;
+        } else {
+          packageName = packageName.split("/")[0];
+        }
+
+        if (!graphObj[sourceFile].includes(packageName)) {
+          graphObj[sourceFile].push(packageName);
+        }
+      }
+    } catch (error) {
+      logError(error);
+    }
   }
 
   const uniqueFiles = new Set<string>();
