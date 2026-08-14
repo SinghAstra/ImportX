@@ -44,7 +44,7 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
         {Array.from(dependencyMap.entries()).map(([filePath, imports]) => (
           <div key={filePath} className="p-3 border rounded bg-background">
             <span className="font-mono text-sm font-medium text-primary">
-              📄 {filePath.split("/").pop()}
+              📄 {filePath}
             </span>
             <ul className="mt-2 pl-4 border-l-2 border-muted space-y-1">
               {imports.map((importedFile, idx) => (
@@ -52,7 +52,7 @@ export function GraphVisualizer({ repositoryId }: GraphVisualizerProps) {
                   key={idx}
                   className="font-mono text-xs text-muted-foreground truncate"
                 >
-                  ↳ imports {importedFile.split("/").pop()}
+                  ↳ imports {importedFile}
                 </li>
               ))}
             </ul>

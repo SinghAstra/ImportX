@@ -1,6 +1,5 @@
 import { RepoWorkspaceShell } from "@/features/repo/components/repo-workspace-shell";
 import { repoQueryFn } from "@/features/repo/hooks/use-repo";
-import { repoFilesQueryFn } from "@/features/repo/hooks/use-repo-files";
 import { repoGraphQueryFn } from "@/features/repo/hooks/use-get-graph";
 import { repoKeys } from "@/features/repo/query-keys";
 import { GetRepositoryResponse, REPOSITORY_STATUS } from "@repo/shared";
@@ -38,16 +37,10 @@ export default async function RepositoryPage({ params }: RepositoryPageProps) {
   );
 
   if (repo?.status === REPOSITORY_STATUS.COMPLETED) {
-    await Promise.all([
-      queryClient.prefetchQuery({
-        queryKey: repoKeys.files(id),
-        queryFn: () => repoFilesQueryFn(id),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: repoKeys.graph(id),
-        queryFn: () => repoGraphQueryFn(id),
-      }),
-    ]);
+    await queryClient.prefetchQuery({
+      queryKey: repoKeys.graph(id),
+      queryFn: () => repoGraphQueryFn(id),
+    });
   }
 
   return (

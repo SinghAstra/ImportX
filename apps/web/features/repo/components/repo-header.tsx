@@ -17,13 +17,12 @@ import { STATUS_BORDER_MAP } from "@/lib/constants";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import {
-  ChevronsUpDown,
-  Copy,
   Disc3,
   ExternalLink,
   GitFork,
   LogOut,
   Menu,
+  Share2,
   User,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
@@ -35,15 +34,13 @@ import { useRepository } from "../hooks/use-repo";
 import { useResyncRepository } from "../hooks/use-resync-repo";
 
 interface RepoHeaderProps {
-  isExpandedAll: boolean;
-  onToggleExpandAll: () => void;
-  onCopySummaryAll: () => void;
+  onCopyDependencies: () => void;
+  isCopyDisabled: boolean;
 }
 
 export function RepoHeader({
-  isExpandedAll,
-  onToggleExpandAll,
-  onCopySummaryAll,
+  onCopyDependencies,
+  isCopyDisabled,
 }: RepoHeaderProps) {
   const { toggleSidebar } = useSidebar();
 
@@ -85,7 +82,7 @@ export function RepoHeader({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md select-none shrink-0 ">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-md select-none shrink-0">
       <div className="p-2 px-3 flex items-center justify-between w-full gap-2">
         <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
           <button
@@ -119,7 +116,6 @@ export function RepoHeader({
                     </AvatarFallback>
                   </Avatar>
 
-                  {/* Truncated text wrapper */}
                   <span className="font-mono text-xs sm:text-sm tracking-tight text-foreground truncate block">
                     {repository.owner} / {repository.name}
                   </span>
@@ -169,36 +165,13 @@ export function RepoHeader({
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={onCopySummaryAll}
-                title="Copy All Summaries"
-                aria-label="Copy All Summaries"
+                disabled={isCopyDisabled}
+                onClick={onCopyDependencies}
+                title="Copy Dependency Tree"
+                aria-label="Copy Dependency Tree"
                 className="rounded-full text-muted-foreground hover:text-foreground border bg-card/50 hover:bg-card/70 size-7 sm:size-8 disabled:opacity-40"
               >
-                <Copy className="size-3.5" />
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onToggleExpandAll}
-                aria-label={
-                  isExpandedAll
-                    ? "Collapse all folders and summaries"
-                    : "Expand all folders and summaries"
-                }
-                title={isExpandedAll ? "Collapse All" : "Expand All"}
-                className={cn(
-                  "rounded-full text-muted-foreground hover:text-foreground transition-colors border bg-card/50 hover:bg-card/70 size-7 sm:size-8 disabled:opacity-40",
-                  isExpandedAll && "bg-secondary text-primary border-primary/20"
-                )}
-              >
-                <ChevronsUpDown
-                  className={cn(
-                    "size-3.5 transition-transform duration-200",
-                    isExpandedAll && "rotate-180 text-primary"
-                  )}
-                />
+                <Share2 className="size-3.5" />
               </Button>
             </div>
           )}
@@ -235,9 +208,7 @@ export function RepoHeader({
                   </p>
                 </div>
               </DropdownMenuLabel>
-
               <DropdownMenuSeparator />
-
               <DropdownMenuItem
                 onClick={handleLogout}
                 className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer flex items-center gap-2"

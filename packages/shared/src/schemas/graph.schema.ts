@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 export const graphNodeSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   filePath: z.string(),
   isExternal: z.boolean(),
 });
 
 export const graphEdgeSchema = z.object({
-  id: z.string().uuid(),
-  sourceId: z.string().uuid(),
-  targetId: z.string().uuid(),
+  id: z.uuid(),
+  sourceId: z.uuid(),
+  targetId: z.uuid(),
   type: z.string(),
 });
 

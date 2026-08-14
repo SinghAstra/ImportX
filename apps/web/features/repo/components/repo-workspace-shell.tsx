@@ -4,7 +4,7 @@ import { useRepository } from "@/features/repo/hooks/use-repo";
 import { REPOSITORY_STATUS } from "@repo/shared";
 import { notFound } from "next/navigation";
 import { ProcessingWorkspace } from "./processing-workspace";
-import { GraphVisualizer } from "./graph-visualizer";
+import { GraphWorkspace } from "./graph-workspace";
 
 interface RepoWorkspaceShellProps {
   repositoryId: string;
@@ -29,5 +29,5 @@ export function RepoWorkspaceShell({ repositoryId }: RepoWorkspaceShellProps) {
     return <ProcessingWorkspace key={repositoryId} repo={repo} />;
   }
 
-  return <GraphVisualizer key={repositoryId} repositoryId={repositoryId} />;
+  return <GraphWorkspace key={repositoryId} repo={repo} />;
 }
