@@ -48,6 +48,8 @@ export async function extractAndStoreGraph(
       while ((match = BARE_IMPORT_REGEX.exec(fileContent)) !== null) {
         let packageName = match[1];
 
+        console.log("packageName is ", packageName);
+
         if (packageName.startsWith("@")) {
           const parts = packageName.split("/");
 
