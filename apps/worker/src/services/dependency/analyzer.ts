@@ -10,7 +10,6 @@ export const dependencyAnalyzer = {
       `\n🚀 [Analyzer] Starting Dependency Analysis for Job: ${jobId}`
     );
 
-    // ✨ KILL-SWITCH: Check if cancelled before starting
     const currentJobState = await prisma.job.findUnique({
       where: { id: jobId },
       select: { status: true },

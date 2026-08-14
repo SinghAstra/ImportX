@@ -29,9 +29,25 @@ export async function extractAndStoreGraph(
     baseDir: workspacePath,
     excludeRegExp: [/node_modules/, /\.git/, /dist/, /build/, /\.next/],
     fileExtensions: ["js", "jsx", "ts", "tsx"],
+    includeNpm: true,
   });
 
   const graphObj = madgeResult.obj();
+
+  const [sampleSource, sampleTargets] = Object.entries(graphObj)[0] || [];
+
+  if (sampleSource) {
+    console.log(`👀 [Debug] Graph Structure Sample:`);
+
+    console.log(`Source: ${sampleSource}`);
+
+    console.log(
+      `Targets:`,
+      Array.isArray(sampleTargets) && sampleTargets.length > 0
+        ? [sampleTargets[0]]
+        : sampleTargets
+    );
+  }
 
   const uniqueFiles = new Set<string>();
 
@@ -44,7 +60,7 @@ export async function extractAndStoreGraph(
   const filesArray = Array.from(uniqueFiles);
 
   console.log(
-    `✅ [Madge] Analysis complete. Found ${filesArray.length} unique files.`
+    `✅ [Madge] Analysis complete. Found ${filesArray.length} unique files/modules.`
   );
 
   await trackProgress({
@@ -65,7 +81,7 @@ export async function extractAndStoreGraph(
   const nodesToInsert = filesArray.map((filePath) => ({
     repositoryId: repoId,
     filePath: filePath,
-    isExternal: false,
+    isExternal: !filePath.includes("."),
   }));
 
   await prisma.graphNode.createMany({
@@ -104,7 +120,7 @@ export async function extractAndStoreGraph(
         repositoryId: repoId,
         sourceId,
         targetId,
-        type: "import", // Madge doesn't specify dynamic vs static by default
+        type: "import",
       });
     }
   }
@@ -116,7 +132,6 @@ export async function extractAndStoreGraph(
     message: `Saving ${edgesToInsert.length} edges in safe batches...`,
   });
 
-  // 6. Insert Edges in Micro-Batches
   console.log(`💾 [Madge DB] Inserting ${edgesToInsert.length} edges...`);
 
   let insertedEdgesCount = 0;
